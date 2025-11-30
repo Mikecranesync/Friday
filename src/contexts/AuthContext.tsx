@@ -26,11 +26,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const STORAGE_KEY = '@friday_user';
 
 // Google OAuth Client IDs from Google Cloud Console
-// Web client ID from environment variable with fallback
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '948651982454-mqqfrut1tarkjmfrpsjn6443si2uar3q.apps.googleusercontent.com';
-// For Android standalone builds, you'll need to create an Android OAuth client ID
-// For now, we use the web client ID which works with Expo's auth proxy
-const ANDROID_CLIENT_ID = WEB_CLIENT_ID;
+const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '948651982454-4gi6aqu4e8ao126nppp0glk7i16234vl.apps.googleusercontent.com';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -44,10 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   console.log('OAuth redirect URI:', redirectUri);
+  console.log('Web Client ID:', WEB_CLIENT_ID);
+  console.log('Android Client ID:', ANDROID_CLIENT_ID);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: WEB_CLIENT_ID,
-    // Use Expo proxy which handles the OAuth flow
+    androidClientId: ANDROID_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
     redirectUri,
   });
 
