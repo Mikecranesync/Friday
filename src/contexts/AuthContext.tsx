@@ -36,17 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use Expo's proxy for OAuth - works without configuring credentials
+  // Use Expo's auth proxy - this requires adding the redirect URI to Google Cloud Console:
+  // https://auth.expo.io/@mikecranesync/friday
   const redirectUri = makeRedirectUri({
-    scheme: 'com.friday.voiceassistant',
-    path: 'redirect',
+    // Use Expo's proxy for standalone builds
+    useProxy: true,
   });
 
+  console.log('OAuth redirect URI:', redirectUri);
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: WEB_CLIENT_ID,
-    androidClientId: ANDROID_CLIENT_ID,
-    webClientId: WEB_CLIENT_ID,
-    // Use Expo proxy for standalone builds
+    clientId: WEB_CLIENT_ID,
+    // Use Expo proxy which handles the OAuth flow
     redirectUri,
   });
 
