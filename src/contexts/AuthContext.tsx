@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { makeRedirectUri } from 'expo-auth-session';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -24,20 +25,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = '@friday_user';
 
-// You'll need to create these in Google Cloud Console
-// For Expo, use the Expo client ID for development
-const GOOGLE_CLIENT_ID = ''; // Web client ID - leave empty for now, will use Expo's proxy
+// Google OAuth Client IDs from Google Cloud Console
+// Web client ID from environment variable with fallback
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '948651982454-mqqfrut1tarkjmfrpsjn6443si2uar3q.apps.googleusercontent.com';
+// For Android standalone builds, you'll need to create an Android OAuth client ID
+// For now, we use the web client ID which works with Expo's auth proxy
+const ANDROID_CLIENT_ID = WEB_CLIENT_ID;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Use Expo's proxy for OAuth - works without configuring credentials
+  const redirectUri = makeRedirectUri({
+    scheme: 'com.friday.voiceassistant',
+    path: 'redirect',
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: '', // Optional: your Android client ID
-    iosClientId: '', // Optional: your iOS client ID
-    webClientId: GOOGLE_CLIENT_ID,
-    // Use Expo's proxy for easy setup without configuring OAuth credentials
-    // This works in Expo Go and development builds
+    expoClientId: WEB_CLIENT_ID,
+    androidClientId: ANDROID_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
+    // Use Expo proxy for standalone builds
+    redirectUri,
   });
 
   // Load saved user on mount
