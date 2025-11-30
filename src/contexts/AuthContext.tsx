@@ -33,11 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use Expo's auth proxy - this requires adding the redirect URI to Google Cloud Console:
-  // https://auth.expo.io/@mikecranesync/friday
+  // Use Expo's auth proxy for OAuth
+  // Redirect URI: https://auth.expo.io/@mikecranesync/friday
   const redirectUri = makeRedirectUri({
-    // Use Expo's proxy for standalone builds
-    useProxy: true,
+    scheme: 'friday',
+    path: 'auth',
   });
 
   console.log('OAuth redirect URI:', redirectUri);
