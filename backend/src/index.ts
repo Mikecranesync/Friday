@@ -5,6 +5,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { ttsRouter } from './routes/tts';
 import { healthRouter } from './routes/health';
+import { agentRouter } from './routes/agent';
+import { authRouter } from './routes/auth';
 
 // Load environment variables
 dotenv.config();
@@ -39,6 +41,8 @@ app.use(express.json({ limit: '1mb' }));
 // Routes
 app.use('/api/health', healthRouter);
 app.use('/api/tts', ttsRouter);
+app.use('/api/agent', agentRouter);
+app.use('/api/auth', authRouter);
 
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

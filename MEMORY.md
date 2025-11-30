@@ -1,11 +1,5 @@
 # Friday Voice Assistant - Memory
 
-## Current Version: 1.1.1 (Build 3)
-**Last Updated:** 2025-11-30
-**Latest APK:** https://expo.dev/accounts/mikecranesync/projects/friday/builds/c6b6007d-fa8a-4d23-b9d1-c2d19fe45ac9
-
----
-
 ## Milestone 1: Working APK ✅ (2025-11-29)
 
 ### What Was Built
@@ -31,168 +25,227 @@ A functional Android voice assistant that:
    - Sign in with Google (Expo auth proxy)
    - "Continue as Guest" option
    - User session persistence with AsyncStorage
-   - User avatar and name in header
 
 2. **Backend TTS Service** (Node.js + Express + Google Cloud TTS)
    - High-quality Neural2 voices
    - Audio caching to reduce API costs
-   - Automatic fallback to device TTS if backend unreachable
+   - Automatic fallback to device TTS
 
-### Architecture
+### Architecture (Updated)
 ```
-friday/
-├── App.tsx                         # Auth routing
-├── src/
-│   ├── contexts/
-│   │   └── AuthContext.tsx         # Google OAuth + guest mode
-│   ├── screens/
-│   │   ├── LoginScreen.tsx         # Sign in UI
-│   │   └── VoiceScreen.tsx         # Voice UI with waveform
-│   └── services/
-│       ├── VoiceService.ts         # Recording + Backend TTS
-│       └── AIService.ts            # Gemini transcription + chat
-├── backend/                        # Node.js TTS backend
-│   ├── src/
-│   │   ├── index.ts                # Express server
-│   │   ├── routes/
-│   │   │   ├── health.ts           # Health check
-│   │   │   └── tts.ts              # TTS endpoints
-│   │   └── services/
-│   │       └── tts-service.ts      # Google Cloud TTS + caching
-│   ├── package.json
-│   └── README.md
-├── app.json                        # Expo config (v1.1.1)
-└── package.json
+App.tsx (Auth routing)
+├── src/contexts/AuthContext.tsx (Google OAuth)
+├── src/screens/LoginScreen.tsx (Login UI)
+├── src/screens/VoiceScreen.tsx (Voice UI with waveform)
+├── src/services/VoiceService.ts (Recording + Backend TTS)
+├── src/services/AIService.ts (Gemini transcription + chat)
+└── backend/
+    ├── src/index.ts (Express server)
+    ├── src/routes/tts.ts (TTS endpoints)
+    └── src/services/tts-service.ts (Google Cloud TTS)
+```
+
+### Core Files
+- `App.tsx` - Auth routing (login vs voice screen)
+- `src/contexts/AuthContext.tsx` - Google OAuth + guest mode
+- `src/screens/LoginScreen.tsx` - Sign in UI
+- `src/screens/VoiceScreen.tsx` - Main voice UI with waveform
+- `src/services/VoiceService.ts` - Recording + Backend/device TTS
+- `src/services/AIService.ts` - Gemini API integration
+- `backend/` - Node.js TTS backend
+
+### Build Command
+```bash
+eas build --platform android --profile preview
+```
+
+### Backend Setup
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Add Google Cloud credentials
+npm run dev
 ```
 
 ### What's Working
 - ✅ APK installs and runs on Android
-- ✅ Google OAuth sign-in (Expo proxy)
+- ✅ Google OAuth sign-in
 - ✅ Guest mode (skip login)
-- ✅ User avatar and name display
-- ✅ Sign out functionality
 - ✅ Microphone permission request
-- ✅ Voice recording (m4a format)
+- ✅ Voice recording
 - ✅ Gemini API connection
 - ✅ Audio transcription
-- ✅ AI chat responses (Friday personality)
+- ✅ AI chat responses
 - ✅ Backend TTS (Google Cloud Neural2)
 - ✅ Fallback to device TTS
-- ✅ Animated waveform (4 states: idle/listening/processing/speaking)
-- ✅ State-based color changes
+- ✅ Animated waveform states
 
 ---
 
-## Milestone 1.6: Crash Fix (v1.1.1) ✅ (2025-11-30)
+## Milestone 1.6: Subscription System + EAS Build Fixes ✅ (2025-11-30)
 
-### Problem
-APK v1.1.0 crashed immediately on launch - app would not open.
+### What Was Added
+1. **RevenueCat Subscription System**
+   - PaywallScreen with subscription tiers
+   - SubscriptionContext for managing user subscriptions
+   - Guest mode bypasses paywall
+   - AuthContext integration
 
-### Root Causes Identified
-1. **metro.config.js** - Complex configuration using `__DEV__` variable (not available at Metro config time), plus problematic resolver settings that broke the bundle
-2. **AuthContext.tsx** - Used deprecated `useProxy: true` option in `makeRedirectUri()` which caused crashes in newer Expo SDK builds
+2. **EAS Build Configuration Fixes**
+   - Added `expo-build-properties` plugin
+   - Fixed `expo-linear-gradient` version (15.0.7 → 13.0.2)
+   - Configured Android build properties in app.json
+   - Added ErrorBoundary for startup crash protection
+   - Made RevenueCat initialization non-blocking
 
-### Fixes Applied
-1. **Simplified metro.config.js** - Reduced to minimal config that just adds 'cjs' extension support
-2. **Updated OAuth redirect** - Replaced `useProxy: true` with proper `scheme` + `path` configuration
-3. **Added deep link scheme** - Added `scheme: "friday"` to app.json for OAuth redirects
-
-### Files Changed
-- `metro.config.js` - Simplified from 70 lines to 9 lines
-- `src/contexts/AuthContext.tsx` - Fixed `makeRedirectUri()` call
-- `app.json` - Added `scheme: "friday"`, bumped to v1.1.1 (versionCode 3)
-
----
-
-## Git Worktrees
-
-| Directory | Branch | Purpose |
-|-----------|--------|---------|
-| `friday/` | `main` | Stable release |
-| `friday-oauth/` | `feature/oauth-direct` | Issue #1: Direct OAuth (no proxy) |
-| `friday-tts/` | `feature/tts-backend` | TTS improvements |
-| `friday-history/` | `feature/conversation-history` | Issue #3: Chat history |
-
-### Worktree Commands
-```bash
-# List worktrees
-cd C:\Users\hharp\PAI\friday
-git worktree list
-
-# Work on a feature
-cd ../friday-oauth
-# make changes...
-git add -A && git commit -m "Description"
-git push origin feature/oauth-direct
+### Architecture (Updated)
 ```
+App.tsx (ErrorBoundary + Auth + Subscription routing)
+├── src/components/ErrorBoundary.tsx (Crash protection)
+├── src/contexts/AuthContext.tsx (Google OAuth)
+├── src/contexts/SubscriptionContext.tsx (RevenueCat)
+├── src/screens/LoginScreen.tsx (Login UI)
+├── src/screens/PaywallScreen.tsx (Subscription UI)
+├── src/screens/VoiceScreen.tsx (Voice UI with waveform)
+├── src/services/VoiceService.ts (Recording + Backend TTS)
+└── src/services/AIService.ts (Gemini transcription + chat)
+```
+
+### Build Issues Fixed
+1. **Gradle Build Failure #1:** Missing `expo-build-properties`
+   - **Solution:** `npx expo install expo-build-properties`
+   - **Configured:** Android SDK 34, Kotlin 1.9.23
+
+2. **Gradle Build Failure #2:** Version mismatch
+   - **Error:** `expo-linear-gradient@15.0.7` incompatible with Expo SDK 51
+   - **Solution:** Downgraded to `expo-linear-gradient@13.0.2`
+   - **Root Cause:** expo-module-gradle-plugin not found
+
+3. **App Startup Crashes:** RevenueCat initialization blocking
+   - **Solution:** Made subscription checks non-blocking with try-catch
+   - **Added:** ErrorBoundary component for graceful error recovery
+
+### Build Command (Working)
+```bash
+# Development build (recommended)
+eas build --profile development --platform android --clear-cache
+
+# Preview build
+eas build --profile preview --platform android --clear-cache
+```
+
+### EAS Configuration
+```json
+// eas.json
+{
+  "preview": {
+    "developmentClient": true,  // Fixed: was missing
+    "distribution": "internal",
+    "android": {
+      "buildType": "apk"
+    }
+  }
+}
+
+// app.json
+{
+  "plugins": [
+    [
+      "expo-build-properties",
+      {
+        "android": {
+          "compileSdkVersion": 34,
+          "targetSdkVersion": 34,
+          "buildToolsVersion": "34.0.0",
+          "kotlinVersion": "1.9.23"
+        }
+      }
+    ]
+  ]
+}
+```
+
+### What's Working
+- ✅ EAS builds complete successfully
+- ✅ APK downloads and installs
+- ✅ ErrorBoundary catches startup crashes
+- ✅ RevenueCat subscription system
+- ✅ PaywallScreen with subscription UI
+- ✅ Guest mode bypasses subscription
+- ✅ Graceful degradation if RevenueCat fails
+
+### Successful Build
+- **Build ID:** 380221ea-7aed-4e6d-a737-8671c65b3786
+- **Date:** 2025-11-30
+- **Download:** https://expo.dev/accounts/mikecranesync/projects/friday/builds/380221ea-7aed-4e6d-a737-8671c65b3786
 
 ---
 
 ## GitHub Issues
 
-| Issue | Title | Status |
-|-------|-------|--------|
-| #1 | OAuth without Expo Proxy + Multi-Account | Open |
-| #2 | Voice Recording Enhancements | Open |
-| #3 | Gemini Integration (conversation history) | Open |
-| #4 | TTS Backend | ✅ Resolved |
+### Issue #1: OAuth without Expo Proxy + Multi-Account
+- Remove Expo proxy dependency
+- Show Google account picker for multi-account users
+- https://github.com/Mikecranesync/Friday/issues/1
+
+### Issue #2: Voice Recording Enhancements
+- Audio level visualization (real amplitude)
+- Recording duration timer
+- https://github.com/Mikecranesync/Friday/issues/2
+
+### Issue #3: Gemini Integration
+- Conversation history persistence
+- Streaming responses
+- https://github.com/Mikecranesync/Friday/issues/3
+
+### Issue #4: TTS Backend (RESOLVED)
+- ✅ Built Node.js backend with Google Cloud TTS
+- ✅ Caching layer for cost reduction
+- ✅ Mobile app integration
+- https://github.com/Mikecranesync/Friday/issues/4
 
 ---
 
-## Build Commands
+## Technical Notes
 
-### Build APK
-```bash
-cd C:\Users\hharp\PAI\friday
-eas build --platform android --profile preview
-```
+### Why Expo Go Failed
+- `newArchEnabled` incompatible with Expo Go
+- OTA updates causing java.io download errors
+- Tested on 2 phones, both failed
+- React Native Reanimated complexity
 
-### Start Backend (for TTS)
-```bash
-cd C:\Users\hharp\PAI\friday\backend
-npm install
-cp .env.example .env
-# Add google-credentials.json
-npm run dev
-```
+### Why EAS Build Works
+- Compiles to real native APK
+- No runtime dependency on Expo Go
+- All native modules bundled
+- ~10-15 min build time
 
-### Development
-```bash
-cd C:\Users\hharp\PAI\friday
-npm start
-# Press 'a' for Android (requires dev build)
-```
+### Backend TTS vs Device TTS
+- **Backend (Google Cloud)**: High-quality Neural2 voices, consistent across devices
+- **Device TTS**: Free but inconsistent quality, fails on some Android versions
+- VoiceService automatically falls back to device TTS if backend unreachable
 
----
-
-## Environment Variables
-
-### Mobile App (.env)
+### Environment Variables
 ```env
+# Mobile App (.env)
 EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-key
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-web-client-id
-EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your-android-client-id
-EXPO_PUBLIC_BACKEND_URL=http://10.0.2.2:3001
+EXPO_PUBLIC_BACKEND_URL=http://10.0.2.2:3001  # or local IP
 EXPO_PUBLIC_USE_BACKEND_TTS=true
-```
 
-### Backend (.env)
-```env
+# Backend (.env)
 PORT=3001
 GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
 TTS_VOICE_NAME=en-US-Neural2-F
 ```
 
----
-
-## Tech Stack
-
-- **Mobile:** React Native 0.74.5, Expo SDK 51
-- **AI:** Gemini 1.5 Flash (@google/generative-ai)
-- **Auth:** expo-auth-session, Google OAuth
-- **Audio:** expo-av (recording), expo-speech (fallback TTS)
-- **Backend:** Node.js 18+, Express, Google Cloud TTS
-- **Build:** EAS Build (cloud)
+### Environment
+- Expo SDK 51
+- React Native 0.74.5
+- Gemini 1.5 Flash API
+- Node.js 18+ (backend)
+- Google Cloud TTS (backend)
+- EAS Build (cloud)
 
 ---
 
@@ -216,13 +269,3 @@ TTS_VOICE_NAME=en-US-Neural2-F
 - [ ] iOS build
 - [ ] Analytics
 - [ ] Crash reporting
-
----
-
-## Build History
-
-| Version | Date | Build ID | Features |
-|---------|------|----------|----------|
-| 1.1.1 | 2025-11-30 | c6b6007d | Crash fix: metro.config + OAuth |
-| 1.1.0 | 2025-11-30 | 96f485db | Backend TTS, Google OAuth (crashed) |
-| 1.0.0 | 2025-11-29 | 1989801d | Initial release with voice |

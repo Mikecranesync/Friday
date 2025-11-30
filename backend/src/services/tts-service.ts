@@ -1,4 +1,4 @@
-import textToSpeech from '@google-cloud/text-to-speech';
+import { TextToSpeechClient, protos } from '@google-cloud/text-to-speech';
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 
@@ -32,7 +32,7 @@ interface CacheStats {
 }
 
 class TTSService {
-  private client: textToSpeech.TextToSpeechClient;
+  private client: TextToSpeechClient;
   private cache: Map<string, CacheEntry> = new Map();
   private cacheHits = 0;
   private cacheMisses = 0;
@@ -54,7 +54,7 @@ class TTSService {
     // 1. GOOGLE_APPLICATION_CREDENTIALS env var pointing to JSON file
     // 2. Default application credentials
     // 3. Compute Engine/Cloud Run metadata server
-    this.client = new textToSpeech.TextToSpeechClient();
+    this.client = new TextToSpeechClient();
 
     console.log('TTS Service initialized');
     console.log(`  Default voice: ${this.config.defaultVoiceName}`);
@@ -135,7 +135,7 @@ class TTSService {
     console.log(`Synthesizing: "${options.text.substring(0, 50)}..." with voice ${voice}`);
 
     // Build the synthesis request
-    const request: textToSpeech.protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
+    const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
       input: { text: options.text },
       voice: {
         languageCode,
@@ -195,14 +195,14 @@ class TTSService {
     }
 
     return response.voices
-      .filter(voice => voice.name && voice.languageCodes?.[0])
-      .map(voice => ({
+      .filter((voice: any) => voice.name && voice.languageCodes?.[0])
+      .map((voice: any) => ({
         name: voice.name!,
         languageCode: voice.languageCodes![0],
         ssmlGender: voice.ssmlGender?.toString() || 'NEUTRAL',
         naturalSampleRateHertz: voice.naturalSampleRateHertz || 24000,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }
 
   /**

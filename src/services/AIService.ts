@@ -18,7 +18,7 @@ class AIService {
       console.log('Initializing AI with key:', API_KEY.substring(0, 10) + '...');
       this.genAI = new GoogleGenerativeAI(API_KEY);
       this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-      
+
       // Start a chat session with Friday's personality
       this.chat = this.model.startChat({
         history: [
@@ -41,24 +41,47 @@ class AIService {
     }
   }
 
+
+  // Backend API URL - update this for your network
+  // Android emulator: 10.0.2.2 maps to host localhost
+  // Physical device: use your computer's local IP (e.g., 192.168.1.100)
+  // Your computer IP: 192.168.4.71
+  private BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.4.71:8888';
+
   async chat_message(message: string): Promise<string> {
     try {
-      if (!this.chat) {
-        this.initialize();
+      console.log('AIService: Sending message to backend agent:', message);
+
+      const response = await fetch(`${this.BACKEND_URL}/api/agent/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          userId: 'user-1', // TODO: Get actual user ID
+          history: [], // TODO: Pass history if needed, or let backend handle it
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`);
       }
 
-      if (!this.chat) {
-        return "I'm having trouble connecting. Please check your API key.";
+      const data = await response.json();
+      console.log('AIService: Agent Response:', data);
+
+      // Handle structured response
+      if (data.action) {
+        console.log('AIService: Received action:', data.action);
+        // TODO: Handle actions like navigation
       }
 
-      const result = await this.chat.sendMessage(message);
-      const response = result.response.text();
-      
-      console.log('AI Response:', response);
-      return response;
+      return data.text;
     } catch (error) {
       console.error('AI chat error:', error);
-      return "Sorry, I couldn't process that. Please try again.";
+      return "Sorry, I'm having trouble connecting to my brain. Please check the backend connection.";
     }
   }
 
@@ -94,9 +117,9 @@ class AIService {
 
       // Handle no speech case
       if (transcription.toLowerCase().includes('no speech') ||
-          transcription.toLowerCase().includes('cannot hear') ||
-          transcription.toLowerCase().includes('no audio') ||
-          transcription.length === 0) {
+        transcription.toLowerCase().includes('cannot hear') ||
+        transcription.toLowerCase().includes('no audio') ||
+        transcription.length === 0) {
         console.log('AIService: No speech detected');
         return '';
       }

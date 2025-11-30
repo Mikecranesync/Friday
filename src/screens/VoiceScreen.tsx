@@ -8,15 +8,18 @@ import {
   Animated,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { voiceService } from '../services/VoiceService';
 import { aiService } from '../services/AIService';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
 
 export default function VoiceScreen() {
   const { user, signOut } = useAuth();
+  const { isSubscribed, isInTrial, trialEndDate } = useSubscription();
   const [state, setState] = useState<VoiceState>('idle');
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('Tap to speak');
@@ -217,6 +220,31 @@ export default function VoiceScreen() {
     }
   };
 
+  const getTrialDaysRemaining = () => {
+    if (!trialEndDate) return 0;
+    const now = new Date();
+    const diff = trialEndDate.getTime() - now.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const getSubscriptionText = () => {
+    if (user?.id === 'guest') return null;
+
+    if (isInTrial && trialEndDate) {
+      const daysLeft = getTrialDaysRemaining();
+      if (daysLeft > 0) {
+        return `Free Trial (${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left) ⚙️`;
+      }
+      return 'Trial Ending Soon ⚠️';
+    }
+
+    if (isSubscribed) {
+      return 'Friday Pro ⚙️';
+    }
+
+    return null;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header with user info */}
@@ -229,7 +257,17 @@ export default function VoiceScreen() {
               <Text style={styles.avatarText}>{user?.name?.[0] || '?'}</Text>
             </View>
           )}
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <View>
+            <Text style={styles.userName}>{user?.name || 'User'}</Text>
+            {isSubscribed && user?.id !== 'guest' && (
+              <Text style={[
+                styles.proText,
+                isInTrial && styles.trialText
+              ]}>
+                {getSubscriptionText()}
+              </Text>
+            )}
+          </View>
         </View>
         <TouchableOpacity onPress={signOut} style={styles.signOutButton}>
           <Text style={styles.signOutText}>Sign Out</Text>
@@ -324,6 +362,15 @@ const styles = StyleSheet.create({
   userName: {
     color: '#D4BBFF',
     fontSize: 14,
+  },
+  proText: {
+    color: '#D96BFF',
+    fontSize: 11,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  trialText: {
+    color: '#10B981',
   },
   signOutButton: {
     paddingHorizontal: 12,

@@ -6,7 +6,8 @@ import { Platform } from 'react-native';
 // Backend API URL - update this for your network
 // Android emulator: 10.0.2.2 maps to host localhost
 // Physical device: use your computer's local IP (e.g., 192.168.1.100)
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.0.2.2:3001';
+// Your computer IP: 192.168.4.71
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://192.168.4.71:8888';
 const USE_BACKEND_TTS = process.env.EXPO_PUBLIC_USE_BACKEND_TTS !== 'false';
 
 // Custom recording options optimized for speech recognition

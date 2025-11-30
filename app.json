@@ -36,6 +36,19 @@
         "projectId": "704a3abf-0e2a-4dd2-a98a-185cfb03f355"
       }
     },
-    "owner": "mikecranesync"
+    "owner": "mikecranesync",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0",
+            "kotlinVersion": "1.9.23"
+          }
+        }
+      ]
+    ]
   }
 }

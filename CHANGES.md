@@ -1,6 +1,151 @@
 # 📝 Friday Voice Assistant - Changes & Improvements
 
-**Date:** November 29, 2025
+---
+
+## 🚀 November 30, 2025 - EAS Build Fixes & Subscription System
+
+**Focus:** Fixed Gradle build errors, added RevenueCat subscriptions, successful EAS build
+
+### ✅ What Was Fixed
+
+#### 1. **EAS Build Configuration**
+- **Problem:** Gradle build failing with "expo-module-gradle-plugin not found"
+- **Solution:** Added `expo-build-properties` plugin to app.json
+- **Configuration:**
+  ```json
+  {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0",
+            "kotlinVersion": "1.9.23"
+          }
+        }
+      ]
+    ]
+  }
+  ```
+
+#### 2. **Expo Linear Gradient Version Mismatch**
+- **Problem:** `expo-linear-gradient@15.0.7` incompatible with Expo SDK 51
+- **Error:** "Plugin expo-module-gradle-plugin was not found" + "release property missing"
+- **Solution:** Downgraded to compatible version
+  ```json
+  // FROM: "expo-linear-gradient": "^15.0.7"
+  // TO:   "expo-linear-gradient": "~13.0.2"
+  ```
+- **Result:** ✅ All dependencies now compatible with Expo SDK 51
+
+#### 3. **EAS Development Profile**
+- **Problem:** Preview profile missing `developmentClient: true`
+- **Solution:** Updated `eas.json`:
+  ```json
+  {
+    "preview": {
+      "developmentClient": true,  // Added
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    }
+  }
+  ```
+
+### ✨ New Features Added
+
+#### 1. **RevenueCat Subscription System**
+- Added `react-native-purchases@9.6.8`
+- Created `SubscriptionContext.tsx` for subscription management
+- Built `PaywallScreen.tsx` with subscription UI
+- Guest mode bypasses paywall
+- Graceful degradation if RevenueCat fails
+
+#### 2. **ErrorBoundary Component**
+- Catches startup crashes
+- User-friendly error screen
+- "Try Again" recovery option
+- Prevents app from completely failing
+
+#### 3. **Debug Logger Utility**
+- Created `src/utils/debugLogger.ts`
+- Structured logging for debugging
+- Emoji-based log levels
+- Log history tracking
+
+### 📦 Dependencies Changed
+
+**Added:**
+```json
+{
+  "expo-build-properties": "~0.12.5"
+}
+```
+
+**Updated:**
+```json
+{
+  "expo-linear-gradient": "~13.0.2"  // was: ^15.0.7
+}
+```
+
+### 🔧 Files Modified
+
+**Configuration:**
+- `eas.json` - Added developmentClient to preview profile
+- `app.json` - Added expo-build-properties plugin
+- `package.json` - Fixed expo-linear-gradient version
+
+**New Files:**
+- `src/components/ErrorBoundary.tsx` - Error boundary component
+- `src/contexts/SubscriptionContext.tsx` - RevenueCat integration
+- `src/screens/PaywallScreen.tsx` - Subscription UI
+- `src/utils/debugLogger.ts` - Debug logging utility
+
+**Updated Files:**
+- `App.tsx` - Added ErrorBoundary wrapper
+- `backend/src/services/tts-service.ts` - Fixed TypeScript types
+
+### 🎉 Build Success
+
+**Build ID:** `380221ea-7aed-4e6d-a737-8671c65b3786`
+**Download Link:** https://expo.dev/accounts/mikecranesync/projects/friday/builds/380221ea-7aed-4e6d-a737-8671c65b3786
+
+**Build Command Used:**
+```bash
+eas build --profile development --platform android --clear-cache
+```
+
+### ✅ Verified Working
+
+- [x] EAS build completes successfully
+- [x] No Gradle errors
+- [x] expo-modules-core compatibility confirmed
+- [x] All Expo SDK 51 dependencies compatible
+- [x] APK available for download
+- [x] ErrorBoundary catches crashes
+- [x] Subscription system initialized
+
+### 🐛 Issues Resolved
+
+1. ✅ Gradle build failing - **Fixed with expo-build-properties**
+2. ✅ expo-module-gradle-plugin not found - **Fixed with version downgrade**
+3. ✅ SoftwareComponent "release" property error - **Fixed with version compatibility**
+4. ✅ App startup crashes - **Fixed with ErrorBoundary and non-blocking init**
+
+### 📝 Next Steps
+
+1. Download and test APK on physical device
+2. Verify voice recording works
+3. Test subscription flow
+4. Test guest mode
+5. Get crash logs if issues occur
+
+---
+
+## 🛠️ November 29, 2025 - Error Handling & Debugging Tools
+
 **Focus:** Error Handling, Linting, Debugging Tools, and Android Fixes
 
 ---

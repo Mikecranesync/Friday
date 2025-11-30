@@ -1,10 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { makeRedirectUri } from 'expo-auth-session';
-
-WebBrowser.maybeCompleteAuthSession();
+import { AuthService } from '../services/AuthService';
 
 interface User {
   id: string;
@@ -13,122 +9,222 @@ interface User {
   picture?: string;
 }
 
+interface StoredUser {
+  id: string;
+  email: string;
+  passwordHash: string;
+  name: string;
+  createdAt: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  signIn: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   skipLogin: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const STORAGE_KEY = '@friday_user';
-
-// Google OAuth Client IDs from Google Cloud Console
-const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '948651982454-mqqfrut1tarkjmfrpsjn6443si2uar3q.apps.googleusercontent.com';
-const ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '948651982454-4gi6aqu4e8ao126nppp0glk7i16234vl.apps.googleusercontent.com';
+// AsyncStorage keys for user data
+const CURRENT_USER_KEY = '@friday_current_user';
+const USERS_ARRAY_KEY = '@friday_users';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Use Expo's auth proxy for OAuth
-  // Redirect URI: https://auth.expo.io/@mikecranesync/friday
-  const redirectUri = makeRedirectUri({
-    scheme: 'friday',
-    path: 'auth',
-  });
-
-  console.log('OAuth redirect URI:', redirectUri);
-  console.log('Web Client ID:', WEB_CLIENT_ID);
-  console.log('Android Client ID:', ANDROID_CLIENT_ID);
-
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: WEB_CLIENT_ID,
-    androidClientId: ANDROID_CLIENT_ID,
-    webClientId: WEB_CLIENT_ID,
-    redirectUri,
-  });
 
   // Load saved user on mount
   useEffect(() => {
     loadStoredUser();
   }, []);
 
-  // Handle Google auth response
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        fetchUserInfo(authentication.accessToken);
-      }
-    }
-  }, [response]);
-
   const loadStoredUser = async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const stored = await AsyncStorage.getItem(CURRENT_USER_KEY);
       if (stored) {
-        setUser(JSON.parse(stored));
+        const userData = JSON.parse(stored);
+        console.log('✅ Loaded stored user:', userData.email);
+        setUser(userData);
+      } else {
+        console.log('ℹ️  No stored user found');
       }
     } catch (error) {
-      console.error('Failed to load user:', error);
+      console.error('❌ Failed to load user:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchUserInfo = async (accessToken: string) => {
+  /**
+   * Get all registered users from storage
+   */
+  const getAllUsers = async (): Promise<StoredUser[]> => {
     try {
-      const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const userInfo = await response.json();
-
-      const userData: User = {
-        id: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-      };
-
-      setUser(userData);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+      const usersJson = await AsyncStorage.getItem(USERS_ARRAY_KEY);
+      return usersJson ? JSON.parse(usersJson) : [];
     } catch (error) {
-      console.error('Failed to fetch user info:', error);
+      console.error('❌ Failed to load users array:', error);
+      return [];
     }
   };
 
-  const signIn = async () => {
+  /**
+   * Save users array to storage
+   */
+  const saveAllUsers = async (users: StoredUser[]): Promise<void> => {
     try {
-      await promptAsync();
+      await AsyncStorage.setItem(USERS_ARRAY_KEY, JSON.stringify(users));
+      console.log('✅ Users array saved successfully');
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('❌ Failed to save users array:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Sign up a new user with email/password
+   */
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      console.log('🔵 Sign up initiated for:', email);
+
+      // Validate inputs
+      const sanitizedEmail = AuthService.sanitizeInput(email.toLowerCase());
+      const sanitizedName = AuthService.sanitizeInput(name);
+
+      if (!AuthService.validateEmail(sanitizedEmail)) {
+        throw new Error('Invalid email format');
+      }
+
+      const passwordValidation = AuthService.validatePassword(password);
+      if (!passwordValidation.valid) {
+        throw new Error(passwordValidation.message || 'Invalid password');
+      }
+
+      // Check if user already exists
+      const users = await getAllUsers();
+      const existingUser = users.find(u => u.email === sanitizedEmail);
+
+      if (existingUser) {
+        console.error('❌ User already exists:', sanitizedEmail);
+        throw new Error('User with this email already exists');
+      }
+
+      // Create new user
+      const passwordHash = await AuthService.hashPassword(password);
+      const userId = AuthService.generateUserId();
+
+      const newStoredUser: StoredUser = {
+        id: userId,
+        email: sanitizedEmail,
+        passwordHash,
+        name: sanitizedName,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save to users array
+      users.push(newStoredUser);
+      await saveAllUsers(users);
+
+      // Set as current user
+      const currentUser: User = {
+        id: userId,
+        email: sanitizedEmail,
+        name: sanitizedName,
+      };
+
+      setUser(currentUser);
+      await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+      console.log('✅ User signed up successfully:', sanitizedEmail);
+    } catch (error) {
+      console.error('❌ Sign up error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Sign in existing user with email/password
+   */
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('🔵 Sign in initiated for:', email);
+
+      // Validate inputs
+      const sanitizedEmail = AuthService.sanitizeInput(email.toLowerCase());
+
+      if (!AuthService.validateEmail(sanitizedEmail)) {
+        throw new Error('Invalid email format');
+      }
+
+      // Find user in storage
+      const users = await getAllUsers();
+      const storedUser = users.find(u => u.email === sanitizedEmail);
+
+      if (!storedUser) {
+        console.error('❌ User not found:', sanitizedEmail);
+        throw new Error('Invalid email or password');
+      }
+
+      // Verify password
+      const isPasswordValid = await AuthService.verifyPassword(password, storedUser.passwordHash);
+
+      if (!isPasswordValid) {
+        console.error('❌ Invalid password for user:', sanitizedEmail);
+        throw new Error('Invalid email or password');
+      }
+
+      // Set as current user
+      const currentUser: User = {
+        id: storedUser.id,
+        email: storedUser.email,
+        name: storedUser.name,
+      };
+
+      setUser(currentUser);
+      await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+
+      console.log('✅ User signed in successfully:', sanitizedEmail);
+    } catch (error) {
+      console.error('❌ Sign in error:', error);
+      throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      console.log('🔵 Signing out user');
+      await AsyncStorage.removeItem(CURRENT_USER_KEY);
       setUser(null);
+      console.log('✅ User signed out successfully');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Sign out error:', error);
+      throw error;
     }
   };
 
   const skipLogin = async () => {
-    const guestUser: User = {
-      id: 'guest',
-      email: 'guest@friday.app',
-      name: 'Guest User',
-    };
-    setUser(guestUser);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(guestUser));
+    try {
+      console.log('🔵 Continuing as guest');
+      const guestUser: User = {
+        id: 'guest',
+        email: 'guest@friday.app',
+        name: 'Guest User',
+      };
+      setUser(guestUser);
+      await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(guestUser));
+      console.log('✅ Guest mode activated');
+    } catch (error) {
+      console.error('❌ Skip login error:', error);
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, skipLogin }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut, skipLogin }}>
       {children}
     </AuthContext.Provider>
   );
