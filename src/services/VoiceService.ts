@@ -3,6 +3,12 @@ import * as FileSystem from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import { Platform } from 'react-native';
 
+// Backend API URL - update this for your network
+// Android emulator: 10.0.2.2 maps to host localhost
+// Physical device: use your computer's local IP (e.g., 192.168.1.100)
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://10.0.2.2:3001';
+const USE_BACKEND_TTS = process.env.EXPO_PUBLIC_USE_BACKEND_TTS !== 'false';
+
 // Custom recording options optimized for speech recognition
 const SPEECH_RECORDING_OPTIONS = {
   isMeteringEnabled: true,
@@ -35,6 +41,8 @@ class VoiceService {
   private recording: Audio.Recording | null = null;
   private isRecording = false;
   private lastError: string = '';
+  private soundObject: Audio.Sound | null = null;
+  private isSpeaking = false;
 
   async initialize(): Promise<boolean> {
     try {
@@ -56,11 +64,32 @@ class VoiceService {
       });
       console.log('VoiceService: Audio mode set');
 
+      // Test backend connectivity if using backend TTS
+      if (USE_BACKEND_TTS) {
+        this.testBackendConnection();
+      }
+
       return true;
     } catch (error) {
       this.lastError = `Init failed: ${error}`;
       console.error('Failed to initialize voice service:', error);
       return false;
+    }
+  }
+
+  private async testBackendConnection(): Promise<void> {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/health`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (response.ok) {
+        console.log('VoiceService: Backend TTS connected at', BACKEND_URL);
+      } else {
+        console.warn('VoiceService: Backend TTS health check failed, will fallback to device TTS');
+      }
+    } catch (error) {
+      console.warn('VoiceService: Backend TTS not reachable, will fallback to device TTS');
     }
   }
 
@@ -190,24 +219,147 @@ class VoiceService {
     return this.lastError;
   }
 
+  /**
+   * Speak text using backend TTS (Google Cloud) with fallback to device TTS
+   */
   async speak(text: string): Promise<void> {
+    if (USE_BACKEND_TTS) {
+      try {
+        await this.speakWithBackend(text);
+        return;
+      } catch (error) {
+        console.warn('VoiceService: Backend TTS failed, falling back to device TTS:', error);
+      }
+    }
+
+    // Fallback to device TTS
+    return this.speakWithDevice(text);
+  }
+
+  /**
+   * Speak using backend Google Cloud TTS
+   */
+  private async speakWithBackend(text: string): Promise<void> {
+    console.log('VoiceService: Using backend TTS for:', text.substring(0, 50) + '...');
+
+    // Set audio mode for playback
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+
+    // Fetch audio from backend
+    const response = await fetch(`${BACKEND_URL}/api/tts/base64`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        voice: 'en-US-Neural2-F', // High quality female voice
+        speakingRate: 1.0,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Backend TTS failed: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.audio) {
+      throw new Error('No audio data received from backend');
+    }
+
+    // Save base64 audio to temp file
+    const tempUri = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
+    await FileSystem.writeAsStringAsync(tempUri, data.audio, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // Play the audio
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Unload previous sound if exists
+        if (this.soundObject) {
+          try {
+            await this.soundObject.unloadAsync();
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: tempUri },
+          { shouldPlay: true },
+          (status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              this.isSpeaking = false;
+              // Cleanup
+              sound.unloadAsync().catch(() => {});
+              FileSystem.deleteAsync(tempUri, { idempotent: true }).catch(() => {});
+              resolve();
+            }
+          }
+        );
+
+        this.soundObject = sound;
+        this.isSpeaking = true;
+      } catch (error) {
+        this.isSpeaking = false;
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Fallback: Speak using device's built-in TTS
+   */
+  private async speakWithDevice(text: string): Promise<void> {
+    console.log('VoiceService: Using device TTS');
     return new Promise((resolve) => {
+      this.isSpeaking = true;
       Speech.speak(text, {
         language: 'en-US',
         pitch: 1.0,
         rate: 0.9,
-        onDone: () => resolve(),
-        onError: () => resolve(),
+        onDone: () => {
+          this.isSpeaking = false;
+          resolve();
+        },
+        onError: () => {
+          this.isSpeaking = false;
+          resolve();
+        },
       });
     });
   }
 
   stopSpeaking(): void {
+    this.isSpeaking = false;
+
+    // Stop device TTS
     Speech.stop();
+
+    // Stop backend TTS audio playback
+    if (this.soundObject) {
+      this.soundObject.stopAsync().catch(() => {});
+      this.soundObject.unloadAsync().catch(() => {});
+      this.soundObject = null;
+    }
   }
 
   getIsRecording(): boolean {
     return this.isRecording;
+  }
+
+  getIsSpeaking(): boolean {
+    return this.isSpeaking;
   }
 }
 

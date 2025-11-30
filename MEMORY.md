@@ -16,84 +16,95 @@ A functional Android voice assistant that:
 3. **Gemini 1.5 Flash** - Handles both transcription and chat
 4. **Minimal dependencies** - Only essential packages
 
-### Architecture
+---
+
+## Milestone 1.5: Google Auth + Backend TTS ✅ (2025-11-30)
+
+### What Was Added
+1. **Google OAuth Authentication**
+   - Sign in with Google (Expo auth proxy)
+   - "Continue as Guest" option
+   - User session persistence with AsyncStorage
+
+2. **Backend TTS Service** (Node.js + Express + Google Cloud TTS)
+   - High-quality Neural2 voices
+   - Audio caching to reduce API costs
+   - Automatic fallback to device TTS
+
+### Architecture (Updated)
 ```
-App.tsx (UI + State)
-├── src/services/VoiceService.ts (Recording + TTS)
-└── src/services/AIService.ts (Gemini transcription + chat)
+App.tsx (Auth routing)
+├── src/contexts/AuthContext.tsx (Google OAuth)
+├── src/screens/LoginScreen.tsx (Login UI)
+├── src/screens/VoiceScreen.tsx (Voice UI with waveform)
+├── src/services/VoiceService.ts (Recording + Backend TTS)
+├── src/services/AIService.ts (Gemini transcription + chat)
+└── backend/
+    ├── src/index.ts (Express server)
+    ├── src/routes/tts.ts (TTS endpoints)
+    └── src/services/tts-service.ts (Google Cloud TTS)
 ```
 
 ### Core Files
-- `App.tsx` - Main UI with animated waveform
-- `src/services/VoiceService.ts` - Audio recording, TTS
+- `App.tsx` - Auth routing (login vs voice screen)
+- `src/contexts/AuthContext.tsx` - Google OAuth + guest mode
+- `src/screens/LoginScreen.tsx` - Sign in UI
+- `src/screens/VoiceScreen.tsx` - Main voice UI with waveform
+- `src/services/VoiceService.ts` - Recording + Backend/device TTS
 - `src/services/AIService.ts` - Gemini API integration
-- `app.json` - Expo/Android config
-- `eas.json` - Build profiles
+- `backend/` - Node.js TTS backend
 
 ### Build Command
 ```bash
 eas build --platform android --profile preview
 ```
 
+### Backend Setup
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Add Google Cloud credentials
+npm run dev
+```
+
 ### What's Working
 - ✅ APK installs and runs on Android
+- ✅ Google OAuth sign-in
+- ✅ Guest mode (skip login)
 - ✅ Microphone permission request
 - ✅ Voice recording
 - ✅ Gemini API connection
 - ✅ Audio transcription
 - ✅ AI chat responses
-- ✅ Text-to-speech output
-- ✅ Animated waveform states (idle/listening/processing/speaking)
+- ✅ Backend TTS (Google Cloud Neural2)
+- ✅ Fallback to device TTS
+- ✅ Animated waveform states
 
 ---
 
-## Open Issues (For Agents)
+## GitHub Issues
 
-### Issue 1: App Icon & Splash Screen
-- **Branch:** `feature/app-icon`
-- **Worktree:** `../friday-icon`
-- **Task:** Create custom purple-themed branding assets
-- **Files:** `assets/icon.png`, `assets/adaptive-icon.png`, `assets/splash-icon.png`
+### Issue #1: OAuth without Expo Proxy + Multi-Account
+- Remove Expo proxy dependency
+- Show Google account picker for multi-account users
+- https://github.com/Mikecranesync/Friday/issues/1
 
-### Issue 2: Conversation History UI
-- **Branch:** `feature/conversation-history`
-- **Worktree:** `../friday-history`
-- **Task:** Add scrollable message history with bubbles
-- **Files:** `App.tsx`, optionally `src/components/MessageBubble.tsx`
+### Issue #2: Voice Recording Enhancements
+- Audio level visualization (real amplitude)
+- Recording duration timer
+- https://github.com/Mikecranesync/Friday/issues/2
 
-### Issue 3: Settings Screen
-- **Branch:** `feature/settings-screen`
-- **Worktree:** `../friday-settings`
-- **Task:** In-app API key configuration with AsyncStorage
-- **Files:** `src/screens/SettingsScreen.tsx`, `App.tsx`, `src/services/AIService.ts`
+### Issue #3: Gemini Integration
+- Conversation history persistence
+- Streaming responses
+- https://github.com/Mikecranesync/Friday/issues/3
 
----
-
-## Git Worktree Commands
-
-### Setup Worktrees
-```bash
-cd C:\Users\hharp\PAI\friday
-git worktree add ../friday-icon feature/app-icon
-git worktree add ../friday-history feature/conversation-history
-git worktree add ../friday-settings feature/settings-screen
-```
-
-### Agent Workflow
-```bash
-cd ../friday-icon  # or friday-history, friday-settings
-# make changes
-git add -A
-git commit -m "Description of changes"
-git push origin feature/app-icon
-# Create PR on GitHub
-```
-
-### Cleanup
-```bash
-git worktree remove ../friday-icon
-git branch -d feature/app-icon
-```
+### Issue #4: TTS Backend (RESOLVED)
+- ✅ Built Node.js backend with Google Cloud TTS
+- ✅ Caching layer for cost reduction
+- ✅ Mobile app integration
+- https://github.com/Mikecranesync/Friday/issues/4
 
 ---
 
@@ -111,10 +122,30 @@ git branch -d feature/app-icon
 - All native modules bundled
 - ~10-15 min build time
 
+### Backend TTS vs Device TTS
+- **Backend (Google Cloud)**: High-quality Neural2 voices, consistent across devices
+- **Device TTS**: Free but inconsistent quality, fails on some Android versions
+- VoiceService automatically falls back to device TTS if backend unreachable
+
+### Environment Variables
+```env
+# Mobile App (.env)
+EXPO_PUBLIC_GEMINI_API_KEY=your-gemini-key
+EXPO_PUBLIC_BACKEND_URL=http://10.0.2.2:3001  # or local IP
+EXPO_PUBLIC_USE_BACKEND_TTS=true
+
+# Backend (.env)
+PORT=3001
+GOOGLE_APPLICATION_CREDENTIALS=./google-credentials.json
+TTS_VOICE_NAME=en-US-Neural2-F
+```
+
 ### Environment
 - Expo SDK 51
 - React Native 0.74.5
 - Gemini 1.5 Flash API
+- Node.js 18+ (backend)
+- Google Cloud TTS (backend)
 - EAS Build (cloud)
 
 ---
@@ -126,6 +157,7 @@ git branch -d feature/app-icon
 - [ ] Conversation history display
 - [ ] Settings screen
 - [ ] Better error handling
+- [x] Backend TTS service
 
 ### Milestone 3: Integrations
 - [ ] Gmail integration
