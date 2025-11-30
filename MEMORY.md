@@ -1,8 +1,8 @@
 # Friday Voice Assistant - Memory
 
-## Current Version: 1.1.0 (Build 2)
+## Current Version: 1.1.1 (Build 3)
 **Last Updated:** 2025-11-30
-**Latest APK:** https://expo.dev/accounts/mikecranesync/projects/friday/builds/96f485db-c3df-47bf-aca3-57ebfbe90c1d
+**Latest APK:** https://expo.dev/accounts/mikecranesync/projects/friday/builds/c6b6007d-fa8a-4d23-b9d1-c2d19fe45ac9
 
 ---
 
@@ -202,5 +202,6 @@ TTS_VOICE_NAME=en-US-Neural2-F
 
 | Version | Date | Build ID | Features |
 |---------|------|----------|----------|
-| 1.1.0 | 2025-11-30 | 96f485db | Backend TTS, Google OAuth |
+| 1.1.1 | 2025-11-30 | c6b6007d | Crash fix: metro.config + OAuth |
+| 1.1.0 | 2025-11-30 | 96f485db | Backend TTS, Google OAuth (crashed) |
 | 1.0.0 | 2025-11-29 | 1989801d | Initial release with voice |
