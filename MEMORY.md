@@ -61,7 +61,7 @@ friday/
 │   │       └── tts-service.ts      # Google Cloud TTS + caching
 │   ├── package.json
 │   └── README.md
-├── app.json                        # Expo config (v1.1.0)
+├── app.json                        # Expo config (v1.1.1)
 └── package.json
 ```
 
@@ -80,6 +80,27 @@ friday/
 - ✅ Fallback to device TTS
 - ✅ Animated waveform (4 states: idle/listening/processing/speaking)
 - ✅ State-based color changes
+
+---
+
+## Milestone 1.6: Crash Fix (v1.1.1) ✅ (2025-11-30)
+
+### Problem
+APK v1.1.0 crashed immediately on launch - app would not open.
+
+### Root Causes Identified
+1. **metro.config.js** - Complex configuration using `__DEV__` variable (not available at Metro config time), plus problematic resolver settings that broke the bundle
+2. **AuthContext.tsx** - Used deprecated `useProxy: true` option in `makeRedirectUri()` which caused crashes in newer Expo SDK builds
+
+### Fixes Applied
+1. **Simplified metro.config.js** - Reduced to minimal config that just adds 'cjs' extension support
+2. **Updated OAuth redirect** - Replaced `useProxy: true` with proper `scheme` + `path` configuration
+3. **Added deep link scheme** - Added `scheme: "friday"` to app.json for OAuth redirects
+
+### Files Changed
+- `metro.config.js` - Simplified from 70 lines to 9 lines
+- `src/contexts/AuthContext.tsx` - Fixed `makeRedirectUri()` call
+- `app.json` - Added `scheme: "friday"`, bumped to v1.1.1 (versionCode 3)
 
 ---
 
