@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
+  const { signIn, skipLogin, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -44,6 +44,11 @@ export default function LoginScreen() {
             <Text style={styles.googleIconText}>G</Text>
           </View>
           <Text style={styles.signInText}>Sign in with Google</Text>
+        </TouchableOpacity>
+
+        {/* Continue as Guest */}
+        <TouchableOpacity style={styles.guestButton} onPress={skipLogin}>
+          <Text style={styles.guestText}>Continue as Guest</Text>
         </TouchableOpacity>
 
         {/* Footer */}
@@ -135,5 +140,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B5B7A',
     textAlign: 'center',
+  },
+  guestButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  guestText: {
+    fontSize: 14,
+    color: '#9F7AEA',
+    textDecorationLine: 'underline',
   },
 });

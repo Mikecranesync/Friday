@@ -17,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
+  skipLogin: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,8 +106,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const skipLogin = async () => {
+    const guestUser: User = {
+      id: 'guest',
+      email: 'guest@friday.app',
+      name: 'Guest User',
+    };
+    setUser(guestUser);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(guestUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signOut, skipLogin }}>
       {children}
     </AuthContext.Provider>
   );
